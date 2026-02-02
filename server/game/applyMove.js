@@ -1,64 +1,68 @@
-
-
 const DEFAULT_REVEAL_DELAY_MS = 800;
 
-export default function applyMove(gameState, cardId, revealDelayMs = DEFAULT_REVEAL_DELAY_MS) {
-  // ===== VALIDATION =====
-  
+export default function applyMove(
+  gameState,
+  cardId,
+  revealDelayMs = DEFAULT_REVEAL_DELAY_MS,
+) {
+  // ===== VALIDATION (silent ignores) =====
+
   if (gameState.status !== "playing") {
-    return { error: "Game is not active." };
+    return { ignored: true, gameState };
   }
 
-//   if (gameState.lockBoard) {
-//     return { error: "Board is locked. Wait for cards to flip back." };
-//   }
+  // If board is locked (waiting to flip back), ignore clicks
+  if (gameState.lockBoard) {
+    return { ignored: true, gameState };
+  }
 
   const clickedCard = gameState.cards.find((card) => card.id === cardId);
   if (!clickedCard) {
-    return { error: "Invalid cardId." };
+    return { ignored: true, gameState };
   }
 
   if (clickedCard.isMatched) {
-    return { error: "Card is already matched." };
+    return { ignored: true, gameState };
   }
 
   if (gameState.flippedCardIds.includes(cardId)) {
-    return { error: "Card is already flipped." };
+    return { ignored: true, gameState };
   }
 
   if (gameState.flippedCardIds.length >= 2) {
-    return { error: "You can only flip two cards." };
+    return { ignored: true, gameState };
   }
 
   // ===== FLIP THE CARD (IMMUTABLY) =====
-  
+
   const updatedFlippedCardIds = [...gameState.flippedCardIds, cardId];
 
   // If only 1 card is flipped, nothing more to do
   if (updatedFlippedCardIds.length === 1) {
-    return { 
+    return {
       gameState: {
         ...gameState,
-        flippedCardIds: updatedFlippedCardIds
-      }, 
-      needsDelayAction: false 
+        flippedCardIds: updatedFlippedCardIds,
+      },
+      needsDelayAction: false,
     };
   }
 
   // ===== TWO CARDS FLIPPED: CHECK MATCH =====
-  
+
   const [firstId, secondId] = updatedFlippedCardIds;
   const firstCard = gameState.cards.find((card) => card.id === firstId);
   const secondCard = gameState.cards.find((card) => card.id === secondId);
 
   // Safety check (should never happen)
   if (!firstCard || !secondCard) {
-    return { 
-      error: "Internal error: flipped cards not found.",
+    return {
       gameState: {
         ...gameState,
-        flippedCardIds: []
-      }
+        flippedCardIds: [],
+        lockBoard: false,
+      },
+      needsDelayAction: false,
     };
   }
 
@@ -66,8 +70,7 @@ export default function applyMove(gameState, cardId, revealDelayMs = DEFAULT_REV
 
   if (isMatch) {
     // ===== MATCH! =====
-    
-    // Mark cards as matched (immutably)
+
     const updatedCards = gameState.cards.map((card) => {
       if (card.id === firstId || card.id === secondId) {
         return { ...card, isMatched: true };
@@ -75,7 +78,6 @@ export default function applyMove(gameState, cardId, revealDelayMs = DEFAULT_REV
       return card;
     });
 
-    // Increase score for active player (immutably)
     const updatedPlayers = gameState.players.map((player, index) => {
       if (index === gameState.activePlayerIndex) {
         return { ...player, score: player.score + 1 };
@@ -83,7 +85,6 @@ export default function applyMove(gameState, cardId, revealDelayMs = DEFAULT_REV
       return player;
     });
 
-    // Check win condition
     const allMatched = updatedCards.every((card) => card.isMatched);
     const newStatus = allMatched ? "won" : "playing";
 
@@ -94,35 +95,36 @@ export default function applyMove(gameState, cardId, revealDelayMs = DEFAULT_REV
         players: updatedPlayers,
         flippedCardIds: [],
         lockBoard: false,
-        status: newStatus
-        // activePlayerIndex stays the same - player keeps turn!
+        status: newStatus,
+        // activePlayerIndex stays the same (player keeps the turn)
       },
-      needsDelayAction: false
+      needsDelayAction: false,
     };
   }
 
   // ===== NO MATCH =====
-  
-  // Advance to next player (immutably)
-  const nextPlayerIndex = (gameState.activePlayerIndex + 1) % gameState.players.length;
+  // Keep active player the same while the two cards are visible.
+  // Lock the board and let caller schedule unlockBoardAfterNoMatch() after delay.
 
   return {
     gameState: {
       ...gameState,
       flippedCardIds: updatedFlippedCardIds,
       lockBoard: true,
-      activePlayerIndex: nextPlayerIndex
     },
     needsDelayAction: true,
-    delayMs: revealDelayMs
+    delayMs: revealDelayMs,
   };
 }
 
-    
-export function unlockBoard(gameState) {
+export function unlockBoardAfterNoMatch(gameState) {
+  const nextPlayerIndex =
+    (gameState.activePlayerIndex + 1) % gameState.players.length;
+
   return {
     ...gameState,
     flippedCardIds: [],
-    lockBoard: false
+    lockBoard: false,
+    activePlayerIndex: nextPlayerIndex,
   };
 }
