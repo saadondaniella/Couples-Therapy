@@ -28,10 +28,10 @@ The frontend renders the UI and sends player actions in real time.
 
 ### Root
 
-- [ ] package.json
-- [ ] package-lock.json
-- [ ] index.js
-- [ ] .gitignore
+- [x] package.json
+- [x] package-lock.json
+- [x] index.js
+- [x] .gitignore
 
 ### Folders
 
