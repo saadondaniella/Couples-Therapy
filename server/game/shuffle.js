@@ -1,9 +1,4 @@
-/**
- * Shuffles an array using the Fisher-Yates algorithm
- * Pure function - does not modify the original array
- * @param {Array} array - Array to shuffle (cards)
- * @returns {Array} New shuffled array
- */
+
 export default function shuffle(array) {
   const shuffled = [...array];
   
