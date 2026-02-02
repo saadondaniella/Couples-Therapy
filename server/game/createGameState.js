@@ -1,32 +1,62 @@
 
-/*
-🪜 STEP 1 – Create Initial Game State (Backend)
+import { nanoid } from 'nanoid';
+import shuffle from './shuffle.js';
 
-### **What to implement**
-* Decide the **shape of a card**
+/**
+ * Creates a new game state with players and shuffled cards
+ * @param {number} playerCount - Number of players (1-4)
+ * @returns {object} Complete game state
+ */
+export default function createGameState(playerCount = 1) {
+  // Validate player count
+  if (playerCount < 1 || playerCount > 4) {
+    throw new Error('Player count must be between 1 and 4');
+  }
 
-  * `id`
-  * `value`
-  * `isMatched`
+  // Player colors in order
+  const colors = ['red', 'yellow', 'blue', 'green'];
 
-* Decide the **shape of a player**
+  // Create players
+  const players = [];
+  for (let i = 0; i < playerCount; i++) {
+    players.push({
+      id: nanoid(8),
+      color: colors[i],
+      score: 0
+    });
+  }
 
-  * `id`
-  * `color`
-  * `score`
+  // Card values (A-H = 8 pairs = 16 cards for 4x4 grid)
+  const cardValues = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+  
+  // Create card pairs
+  const cards = [];
+  cardValues.forEach(value => {
+    // First card of the pair
+    cards.push({
+      id: nanoid(8),
+      value: value,
+      isMatched: false
+    });
+    // Second card of the pair
+    cards.push({
+      id: nanoid(8),
+      value: value,
+      isMatched: false
+    });
+  });
 
-* Create players based on `playerCount` (1–4)
-* Assign colors in order:
+  // Shuffle the cards
+  const shuffledCards = shuffle(cards);
 
-  * red → yellow → blue → green
-
-* Create card pairs (e.g. A–H duplicated)
-* Call `shuffle()` on the cards
-* Return a full `gameState` object
-
-### **Mental model**
-
-“If someone says NEW\_GAME, this file builds the entire game world.”
-
-✅ Goal: calling this function returns a valid game state object
-*/
+  // Return complete game state
+  return {
+    gameId: nanoid(10),
+    cards: shuffledCards,
+    players: players,
+    activePlayerIndex: 0, // First player starts
+    flippedCardIds: [],
+    lockBoard: false,
+    status: 'playing' // 'playing' or 'won'
+  };
+}
