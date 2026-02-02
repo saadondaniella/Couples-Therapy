@@ -1,6 +1,6 @@
-# 🧠 Memory Game – Project Plan (Node.js)
+# Memory Game – Project Plan (Node.js)
 
-## 🎯 Project Goal
+## Project Goal
 
 Build a web-based Memory game where **Node.js acts as the game engine**.
 The server is responsible for game logic, state handling, and match validation.
@@ -8,7 +8,7 @@ The frontend renders the UI and sends player actions in real time.
 
 ---
 
-## 📦 Tech Stack
+## Tech Stack
 
 ### Node.js Core Modules
 
@@ -24,7 +24,7 @@ The frontend renders the UI and sends player actions in real time.
 
 ---
 
-## 🗂 Project Structure
+## Project Structure
 
 ### Root
 
@@ -53,7 +53,7 @@ The frontend renders the UI and sends player actions in real time.
 
 ---
 
-## 🧠 Game State Design
+## Game State Design
 
 Each game should store:
 
@@ -66,11 +66,11 @@ Each game should store:
 - [ ] start time (VG)
 - [ ] end time (VG)
 
-⚠️ Server must never expose hidden card values to the client.
+Server must never expose hidden card values to the client.
 
 ---
 
-## 🔁 Client ↔ Server Communication (WebSocket)
+## Client ↔ Server Communication (WebSocket)
 
 ### Client → Server Messages
 
@@ -118,7 +118,7 @@ Each game should store:
 
 ---
 
-## 🧩 Backend Responsibilities
+## Backend Responsibilities
 
 - [ ] Generate game state
 - [ ] Shuffle cards
@@ -131,7 +131,7 @@ Each game should store:
 
 ---
 
-## ⚠️ Error Handling
+## Error Handling
 
 - [ ] Invalid gameId
 - [ ] Invalid cardId
@@ -142,7 +142,7 @@ Each game should store:
 
 ---
 
-## 🧪 Testing Checklist
+## Testing Checklist
 
 - [ ] Game can be completed
 - [ ] Cards never reveal values incorrectly
@@ -153,7 +153,7 @@ Each game should store:
 
 ---
 
-## 🧑‍🤝‍🧑 Collaboration (GitHub Flow)
+##  Collaboration (GitHub Flow)
 
 - [ ] Create issues for each feature
 - [ ] Use feature branches
@@ -163,7 +163,7 @@ Each game should store:
 
 ---
 
-## 🏁 Definition of Done
+##  Definition of Done
 
 ### For Pass (G)
 
@@ -181,6 +181,6 @@ Each game should store:
 
 ---
 
-## 📌 Project Pitch (Summary)
+##  Project Pitch (Summary)
 
 A web-based memory game where Node.js functions as the game engine, handling state, logic, and validation, while the client renders the UI and communicates via WebSockets in real time.
