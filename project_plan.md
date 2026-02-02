@@ -1,10 +1,17 @@
-# 🧠 Memory Game – Project Plan (Node.js)
-
 ## 🎯 Project Goal
 
-Build a web-based Memory game where **Node.js acts as the game engine**.
-The server is responsible for game logic, state handling, and match validation.
-The frontend renders the UI and sends player actions in real time.
+Build a web-based **3D Memory game** where **Node.js acts as the game engine**.
+
+The server is responsible for:
+- game logic
+- state handling
+- match validation
+- multiplayer turn logic
+
+The frontend:
+- renders the 3D scene
+- sends player actions
+- reflects server state visually
 
 ---
 
@@ -20,53 +27,55 @@ The frontend renders the UI and sends player actions in real time.
 ### External npm Packages
 
 - [ ] ws (WebSocket – real-time game events)
-- [ ] nanoid (generate unique game IDs)
+- [ ] nanoid (generate unique game & card IDs)
 
----
+### Frontend Library
 
-## 🗂 Project Structure
+- [ ] three.js (3D rendering & animations)
 
-### Root
 
-- [x] package.json
-- [x] package-lock.json
-- [x] index.js
-- [x] .gitignore
-
-### Folders
-
-- [ ] /server
-  - [ ] createServer.js
-  - [ ] /game
-    - [ ] gameManager.js
-    - [ ] createGameState.js
-    - [ ] applyMove.js
-    - [ ] shuffle.js
-- [ ] /public
-  - [ ] index.html
-  - [ ] style.css
-  - [ ] client.js
-- [ ] /utils
-  - [ ] validate.js
-- [ ] /data (optional, VG)
-  - [ ] highscores.json
-
----
-
-## 🧠 Game State Design
+## 🧠 Game State Design (Server)
 
 Each game should store:
 
 - [ ] gameId
 - [ ] cards (id, value, isMatched)
 - [ ] flippedCardIds (max 2)
-- [ ] attempts counter
 - [ ] lockBoard flag
-- [ ] game status (playing / won)
-- [ ] start time (VG)
-- [ ] end time (VG)
+- [ ] status (playing / won)
 
-⚠️ Server must never expose hidden card values to the client.
+### Multiplayer Additions
+
+- [ ] players (array)
+  - [ ] id
+  - [ ] color (red, yellow, blue, green)
+  - [ ] score
+- [ ] activePlayerIndex
+
+⚠️ **Server must never expose hidden card values or pair identities to the client.**
+
+---
+
+## 👥 Multiplayer Rules (Local, 1–4 Players)
+
+* Player count chosen at game start (1–4)
+* One shared board
+* One active player at a time
+
+### Turn Logic
+
+* Player flips two cards
+* If cards match:
+    cards stay open
+    active player score increases
+    active player keeps the turn
+
+* If cards do NOT match:
+    cards flip back after delay
+    turn passes to next player
+
+* Game ends when all pairs are matched
+* Winner = highest score (or tie)
 
 ---
 
@@ -74,59 +83,73 @@ Each game should store:
 
 ### Client → Server Messages
 
-- [ ] NEW_GAME
-- [ ] FLIP_CARD
+- [ ] NEW_GAME (includes playerCount)
+- [ ] FLIP_CARD (cardId only)
 - [ ] GET_HIGHSCORES (VG)
 
 ### Server → Client Messages
 
-- [ ] GAME_STATE
+- [ ] GAME_STATE (sanitized)
 - [ ] ERROR
 - [ ] HIGHSCORES (VG)
+
+⚠️ GAME_STATE must never include card values.
 
 ---
 
 ## 🎮 Game Flow (MVP)
 
-- [ ] User opens the web page
-- [ ] User starts a new game
-- [ ] Server generates and shuffles cards
-- [ ] Cards are rendered face-down
-- [ ] User flips a card
-- [ ] Server updates game state
-- [ ] Match → cards stay open
-- [ ] No match → cards flip back after delay
-- [ ] Attempts counter increases
-- [ ] Game ends when all pairs are matched
+- [ ] User opens web page
+- [ ] User selects number of players (1–4)
+- [ ] Server generates game + players
+- [ ] Cards rendered face-down in 3D grid
+- [ ] Active player indicated by scene color
+- [ ] Player flips cards
+- [ ] Server validates move
+- [ ] Match → player continues
+- [ ] No match → turn advances
+- [ ] Game ends → winner displayed
+
+---
+
+## 🎨 Visual Multiplayer Concept (Client)
+
+- [ ] Scene background color reflects active player
+- [ ] Player score UI per color
+- [ ] Optional color-tinted match effects
+
+⚠️ Visuals must always reflect **server state**, never client guesses.
 
 ---
 
 ## 🖥 Frontend Requirements
 
-- [ ] Render card grid (4x4)
-- [ ] Clickable cards
-- [ ] Attempts counter
-- [ ] Game status message
+- [ ] 3D card grid (4×4)
+- [ ] Clickable cards (raycasting)
+- [ ] Flip animations
+- [ ] Player indicator (color-based)
+- [ ] Score display per player
 - [ ] New Game button
 - [ ] Responsive layout (basic)
 
 ### VG (Optional)
 
 - [ ] Timer
-- [ ] Difficulty selector
+- [ ] Difficulty selector (grid size)
 - [ ] Highscore list
 
 ---
 
 ## 🧩 Backend Responsibilities
 
-- [ ] Generate game state
+- [ ] Generate game & player state
 - [ ] Shuffle cards
 - [ ] Validate moves
-- [ ] Prevent invalid clicks
-- [ ] Handle match / no match logic
+- [ ] Enforce turn logic
+- [ ] Handle match / no-match
+- [ ] Update player scores
 - [ ] Detect win condition
-- [ ] Send updated state via WebSocket
+- [ ] Send sanitized updates via WebSocket
 - [ ] Handle client disconnects gracefully
 
 ---
@@ -137,6 +160,7 @@ Each game should store:
 - [ ] Invalid cardId
 - [ ] Duplicate card click
 - [ ] Actions while board is locked
+- [ ] Invalid player count
 - [ ] Missing or corrupt data file
 - [ ] WebSocket disconnect
 
@@ -145,9 +169,11 @@ Each game should store:
 ## 🧪 Testing Checklist
 
 - [ ] Game can be completed
+- [ ] Multiplayer turn order works
+- [ ] Player continues after successful match
 - [ ] Cards never reveal values incorrectly
 - [ ] Board locks correctly on no-match
-- [ ] Attempts count correctly
+- [ ] Scores update correctly
 - [ ] Game resets correctly
 - [ ] No server crashes on bad input
 
@@ -155,7 +181,7 @@ Each game should store:
 
 ## 🧑‍🤝‍🧑 Collaboration (GitHub Flow)
 
-- [ ] Create issues for each feature
+- [ ] Create issues per feature
 - [ ] Use feature branches
 - [ ] Meaningful commit messages
 - [ ] Pair programming sessions
@@ -167,23 +193,22 @@ Each game should store:
 
 ### For Pass (G)
 
-- [ ] Working memory game
-- [ ] Node handles game logic
+- [ ] Working 3D Memory game
+- [ ] Node.js controls all game logic
 - [ ] Uses at least one external package
-- [ ] Clean structure and readable code
+- [ ] Clean structure & readable code
 
 ### For Pass with Distinction (VG)
 
 - [ ] Robust error handling
-- [ ] Modular code structure
+- [ ] Modular backend structure
+- [ ] Local multiplayer (1–4 players)
 - [ ] Optional persistent data (highscores)
 - [ ] Clear separation of concerns
 
 ---
 
-## Project Pitch (Summary)
-
-A web-based memory game where Node.js functions as the game engine, handling state, logic, and validation, while the client renders the UI and communicates via WebSockets in real time.
+---
 
 Couples-Therapy/
 │
@@ -195,42 +220,40 @@ Couples-Therapy/
 ├── project_plan.md
 │
 ├── server/
-│ ├── createServer.js
-│ └── game/
-│ ├── gameManager.js
-│ ├── createGameState.js
-│ ├── applyMove.js
-│ └── shuffle.js
+│   ├── createServer.js
+│   └── game/
+│       ├── gameManager.js
+│       ├── createGameState.js
+│       ├── applyMove.js
+│       └── shuffle.js
 │
 ├── public/
-│ ├── index.html
-│ ├── style.css
-│ └── client.js
+│   ├── index.html
+│   ├── style.css
+│   ├── client.js
+│   ├── scene.js
+│   ├── cards.js
+│   ├── animations.js
+│   └── ui.js
 │
 ├── utils/
-│ └── validate.js
+│   └── validate.js
 │
 └── data/
-└── highscores.json (optional, VG)
+    └── highscores.json   (optional, VG)
+
+---
 
 Vad varje del gör
 
 Root (översta nivån)
-
 Här ska det bara ligga grundgrejer:
-
 index.js
-
 → startpunkt för appen (startar servern)
-
 package.json / package-lock.json
-
 → dependencies (ws, nanoid)
-
 .gitignore
-
 → ignorerar node_modules
-
 README.md
 
 → hur man startar projektet
