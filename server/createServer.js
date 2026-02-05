@@ -4,18 +4,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { WebSocketServer } from 'ws';
 import { sanitizeGameState, validateNewGame, validateFlipCard } from '../utils/messageFormats.js';
-import gameManager from './game/gameManager.js';
+import * as gameManager from './game/gameManager.js';
 import applyMove, { unlockBoard } from './game/applyMove.js';
 
-// ES modules don't have __dirname, so we create it
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-/**
- * Helper function to send sanitized game state to client
- * @param {WebSocket} ws - WebSocket connection
- * @param {object} gameState - Full game state from server
- */
 function sendGameState(ws, gameState) {
   const sanitized = sanitizeGameState(gameState);
   ws.send(
@@ -26,21 +20,15 @@ function sendGameState(ws, gameState) {
   );
 }
 
-/**
- * Creates and configures the HTTP and WebSocket servers
- * @param {number} port - Port to listen on
- * @returns {object} { httpServer, wss }
- */
+
 export default function createServer(port = 3000) {
-  
-  // ===== HTTP SERVER =====
-  // Serves static files from /public directory
+
   
   const httpServer = http.createServer((req, res) => {
-    // Determine file path
+
     let filePath = path.join(__dirname, '../public', req.url === '/' ? 'index.html' : req.url);
     
-    // Determine content type
+
     const extname = path.extname(filePath);
     const contentTypeMap = {
       '.html': 'text/html',
@@ -50,7 +38,6 @@ export default function createServer(port = 3000) {
     };
     const contentType = contentTypeMap[extname] || 'text/plain';
     
-    // Read and serve file
     fs.readFile(filePath, (err, content) => {
       if (err) {
         if (err.code === 'ENOENT') {
@@ -74,7 +61,6 @@ export default function createServer(port = 3000) {
   wss.on('connection', (ws) => {
     console.log('🔌 Client connected');
     
-    // Track this client's current game
     let currentGameId = null;
     
     ws.on('message', (data) => {
