@@ -21,7 +21,7 @@ function sendGameState(ws, gameState) {
 }
 
 
-export default function createServer(port = 3000) {
+export default function createServer(port = 8000) {
 
   
   const httpServer = http.createServer((req, res) => {

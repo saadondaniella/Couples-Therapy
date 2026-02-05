@@ -13,10 +13,10 @@ class GameClient {
 
   /**
    * Connect to WebSocket server
-   * @param {string} url - WebSocket URL (default: ws://localhost:3000)
+   * @param {string} url - WebSocket URL (default: ws://localhost:8000)
    */
 
-  connect(url = 'ws://localhost:3000') {
+  connect(url = 'ws://localhost:8000') {
     console.log('Connecting to server...');
     
     this.ws = new WebSocket(url);
@@ -79,7 +79,7 @@ class GameClient {
     // Store gameId when we first receive it
     if (message.gameId && !this.gameId) {
       this.gameId = message.gameId;
-      console.log('🎮 Game ID:', this.gameId);
+      console.log('Game ID:', this.gameId);
     }
 
     // Forward to UI/scene via callback
@@ -111,7 +111,7 @@ class GameClient {
       return;
     }
 
-    console.log('🎮 Starting new game with', playerCount, 'player(s)');
+    console.log('Starting new game with', playerCount, 'player(s)');
     
     const message = {
       type: 'NEW_GAME',
@@ -136,7 +136,7 @@ class GameClient {
       return;
     }
 
-    console.log('🃏 Flipping card:', cardId);
+    console.log('Flipping card:', cardId);
     
     const message = {
       type: 'FLIP_CARD',
