@@ -22,7 +22,7 @@ gameClient.onConnectionChange = (isConnected) => {
 
 // ===== GAME STATE UPDATE =====
 gameClient.onGameStateUpdate = (gameState) => {
-  console.log('📦 Game state:', gameState);
+  console.log('Game state:', gameState);
   currentGameState = gameState;
   
   // Update game info
@@ -100,7 +100,7 @@ function renderCards(gameState) {
 
 // ===== START GAME FUNCTION =====
 window.startGame = (playerCount) => {
-  console.log('🎮 Starting new game with', playerCount, 'players');
+  console.log('Starting new game with', playerCount, 'players');
   
   // Reset current game state
   currentGameState = null;
@@ -122,4 +122,26 @@ window.startGame = (playerCount) => {
   
   // Start new game
   gameClient.startNewGame(playerCount);
+};
+
+// Update Color Background depending on active Player    
+
+function updateActivePlayerBackground(gameState) {
+  const grid = document.getElementById('cardGrid');
+  if (!grid) return;
+
+  const activePlayer = gameState.players[gameState.activePlayerIndex];
+
+  // Soft background so cards stay readable
+  grid.style.backgroundColor = activePlayer.color;
+}
+
+
+gameClient.onGameStateUpdate = (gameState) => {
+  console.log('Game state:', gameState);
+  currentGameState = gameState;
+
+  updateGameInfo(gameState);
+  updateActivePlayerBackground(gameState); 
+  renderCards(gameState);
 };
