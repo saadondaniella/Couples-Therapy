@@ -1,0 +1,106 @@
+
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #fff;
+    }
+    
+    h1 {
+      color: #4CAF50;
+    }
+    
+    .controls {
+      margin: 20px 0;
+      padding: 20px;
+      background: #2a2a2a;
+      border-radius: 8px;
+    }
+    
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+    
+    button:hover {
+      background: #45a049;
+    }
+    
+    button:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
+    
+    .status {
+      padding: 15px;
+      margin: 10px 0;
+      background: #333;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+    
+    .status.connected {
+      border-left: 4px solid #4CAF50;
+    }
+    
+    .status.disconnected {
+      border-left: 4px solid #f44336;
+    }
+    
+    .game-info {
+      margin: 20px 0;
+      padding: 15px;
+      background: #2a2a2a;
+      border-radius: 8px;
+    }
+    
+    .error {
+      padding: 10px;
+      margin: 10px 0;
+      background: #f44336;
+      border-radius: 4px;
+    }
+    
+    #cardGrid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 20px 0;
+    }
+    
+    .card {
+      aspect-ratio: 1;
+      background: #3a3a3a;
+      border: 2px solid #555;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      transition: all 0.3s;
+    }
+    
+    .card:hover {
+      background: #4a4a4a;
+      transform: scale(1.05);
+    }
+    
+    .card.faceup {
+      background: #4CAF50;
+      border-color: #4CAF50;
+    }
+    
+    .card.matched {
+      background: #2196F3;
+      border-color: #2196F3;
+      cursor: default;
+    }
