@@ -141,9 +141,9 @@ function updateActivePlayerBackground(gameState) {
   if (!grid) return;
 
   const activePlayer = gameState.players[gameState.activePlayerIndex];
+    grid.style.backgroundColor = activePlayer.color;
 
-  // Soft background so cards stay readable
-  grid.style.backgroundColor = activePlayer.color;
+
 }
 
 gameClient.onGameStateUpdate = (gameState) => {
