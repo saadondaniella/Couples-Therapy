@@ -3,32 +3,16 @@
 }
 
 body {
-  font-family: Arial, sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   margin: 0;
   background: #1a1a1a;
   color: #fff;
 }
 
-/* App wrapper: header + content, fills viewport */
 .app {
   height: 100vh;
   display: grid;
   grid-template-columns: minmax(260px, 340px) 1fr;
-}
-
-.header h1 {
-  font-family: "Jolly Lodger", system-ui;
-  margin: 0;
-  color: #4caf50;
-  font-size: 3rem;
-}
-
-.layout {
-  height: 100%;
-  display: grid;
-  grid-template-columns: minmax(260px, 340px) 1fr;
-  gap: 16px;
-  padding: 16px;
 }
 
 .sidebar {
@@ -36,25 +20,32 @@ body {
   flex-direction: column;
   gap: 16px;
   padding: 16px;
-  background: #1a1a1a;
 }
 
 .header {
   padding-bottom: 8px;
 }
 
+.header h1 {
+  font-family: "Love Ya Like A Sister", cursive;
+  margin: 0;
+  color: #4caf50;
+  font-size: 3.5rem;
+  text-align: center;
+}
+
 .board {
-  height: 100vh; /* 👈 går hela vägen upp */
+  height: 100%;
   background: #111;
+  border-radius: 16px;
+  padding: 2%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: clamp(16px, 4vh, 40px);
+  overflow: auto;
 }
 
-.panel,
-.controls,
-.game-info {
+.panel {
   background: #2a2a2a;
   border-radius: 12px;
   padding: 16px;
@@ -71,16 +62,6 @@ body {
   border-radius: 10px;
 }
 
-.board {
-  background: #111;
-  border-radius: 16px;
-  padding: 24px; /* luft runt spelplanen */
-  display: flex;
-  align-items: center; /* vertikalt centrerad */
-  justify-content: center; /* horisontellt centrerad */
-  height: 100%; /* 👈 detta är nyckeln */
-}
-
 .player-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -88,26 +69,16 @@ body {
   margin-top: 12px;
 }
 
-.player-grid button {
-  width: 100%;
-  margin: 0; /* tar bort gamla marginalen */
-  padding: 12px 10px; /* jämn höjd */
-  border-radius: 12px;
-  font-weight: 700;
-}
-/* =========================
-   Buttons / Controls
-   ========================= */
-
 button {
-  padding: 10px 14px;
-  margin: 6px 6px 0 0;
+  width: 100%;
+  padding: 12px 10px;
   font-size: 16px;
   cursor: pointer;
   background: #4caf50;
-  color: white;
+  color: #fff;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
+  font-weight: 700;
 }
 
 button:hover {
@@ -119,18 +90,14 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* =========================
-   Card Grid
-   ========================= */
-
 #cardGrid {
   transition: background-color 0.4s ease;
   display: grid;
   grid-template-columns: repeat(4, minmax(60px, 1fr));
   gap: clamp(10px, 2vw, 18px);
-  padding: clamp(12px, 2vw, 20px);
+  padding: clamp(16px, 3vw, 28px);
   border-radius: 20px;
-  width: min(520px, 100%);
+  width: min(560px, 100%);
 }
 
 .card {
@@ -140,13 +107,14 @@ button:disabled {
   border: 2px solid #555;
   border-radius: 8px;
   cursor: pointer;
-
   display: flex;
   align-items: center;
   justify-content: center;
 
-  font-size: clamp(18px, 4vw, 28px);
-  transition: all 0.3s;
+  font-size: 3rem;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
 }
 
 .card:hover {
@@ -165,9 +133,7 @@ button:disabled {
   cursor: default;
 }
 
-/* =========================
-   WIN MODAL
-   ========================= */
+/* Win Modal */
 
 .win-overlay {
   position: fixed;
@@ -216,7 +182,7 @@ button:disabled {
 }
 
 .win-btn {
-  border: 0;
+  width: auto; /* override global button width */
   border-radius: 12px;
   padding: 10px 14px;
   cursor: pointer;
@@ -225,17 +191,13 @@ button:disabled {
 
 .win-btn.primary {
   background: #111;
-  color: white;
+  color: #fff;
 }
 
 .win-btn.secondary {
   background: #eee;
   color: #111;
 }
-
-/* =========================
-   FULLSCREEN CONFETTI
-   ========================= */
 
 .confetti-screen {
   position: fixed;
@@ -258,12 +220,9 @@ button:disabled {
   height: 18px;
   border-radius: 3px;
   opacity: 0.9;
-  animation-name: confettiFall;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
+  animation: confettiFall linear infinite;
 }
 
-/* variation via nth-child */
 .confetti-screen i:nth-child(5n) {
   background: #ff3b30;
 }
@@ -289,19 +248,13 @@ button:disabled {
   }
 }
 
-/* =========================
-   Responsive (Mobile)
-   ========================= */
+/* Mobile (stack layout) */
 
 @media (max-width: 820px) {
-  .layout {
+  .app {
     grid-template-columns: 1fr;
-    overflow: auto;
-  }
-
-  .sidebar {
-    overflow: visible;
-    padding-right: 0;
+    height: auto;
+    min-height: 100vh;
   }
 
   .board {
