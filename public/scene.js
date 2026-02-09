@@ -4,6 +4,39 @@
 import * as THREE from 'https://esm.sh/three@0.152.2';
 import { GLTFLoader } from 'https://esm.sh/three@0.152.2/examples/jsm/loaders/GLTFLoader.js';
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CAMERA CONTROLS - Adjust these values to change camera behavior
+// ═══════════════════════════════════════════════════════════════════════════
+const CAMERA_CONFIG = {
+	// Field of View (in degrees) - Higher = wider view, Lower = more zoomed/telephoto
+	// Recommended range: 40-60 degrees. Default: 50
+	FOV: 40,
+	
+	// Camera tilt angle (in degrees) - How much the camera looks down at the cards
+	// 0° = straight ahead, 90° = directly overhead
+	// Recommended range: 20-45 degrees. Default: 30
+	TILT_ANGLE: 60,
+	
+	// Camera distance multiplier when auto-framing cards
+	// Higher = camera pulls back further, Lower = camera gets closer
+	// Recommended range: 1.0-1.3. Default: 1.15
+	PADDING: 1.15,
+	
+	// Card spacing in 3D units
+	// Higher = more space between cards, Lower = cards closer together
+	// Recommended range: 2.5-4.0. Default: 3.2
+	CARD_SPACING: 2.5,
+	
+	// Camera position offset (applied after auto-framing)
+	// Positive X = move camera right, Negative X = move camera left
+	// Positive Y = move camera up, Negative Y = move camera down
+	// Positive Z = move camera away from cards, Negative Z = move camera closer
+	OFFSET_X: 0,
+	OFFSET_Y: 0,
+	OFFSET_Z: 3
+};
+// ═══════════════════════════════════════════════════════════════════════════
+
 let renderer, scene, camera, raycaster;
 let cards = []; // { id, value, mesh, isFaceUp, isMatched }
 let gltfTemplate = null;
@@ -20,50 +53,62 @@ const texLoader = new THREE.TextureLoader();
 export async function initScene(onCardClick) {
 	onCardClickCallback = onCardClick;
 
-		// Render into existing #cardGrid if present, otherwise create a full-page container
-		const grid = document.getElementById('cardGrid');
-			if (grid) {
-				container = grid;
-				// ensure grid can contain canvas
-				container.style.position = container.style.position || 'relative';
-				container.style.overflow = 'hidden';
-				// preserve existing children; do not remove them here - caller should avoid clearing the grid
-			} else {
-			container = document.createElement('div');
-			container.id = 'threejs-root';
-			container.style.position = 'absolute';
-			container.style.left = '0';
-			container.style.top = '0';
-			container.style.width = '100%';
-			container.style.height = '100%';
-			container.style.pointerEvents = 'auto';
-			document.body.appendChild(container);
-		}
+	// Render into existing #cardGrid if present, otherwise create a full-page container
+	const grid = document.getElementById('cardGrid');
+	if (grid) {
+		container = grid;
+		// ensure grid can contain canvas
+		container.style.position = container.style.position || 'relative';
+		container.style.overflow = 'hidden';
+		// preserve existing children; do not remove them here - caller should avoid clearing the grid
+	} else {
+		container = document.createElement('div');
+		container.id = 'threejs-root';
+		container.style.position = 'absolute';
+		container.style.left = '0';
+		container.style.top = '0';
+		container.style.width = '100%';
+		container.style.height = '100%';
+		container.style.pointerEvents = 'auto';
+		document.body.appendChild(container);
+	}
 
-		renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-		renderer.setPixelRatio(window.devicePixelRatio || 1);
-		// Size to container
-		const cw = Math.max(300, container.clientWidth || window.innerWidth);
-		const ch = Math.max(200, container.clientHeight || window.innerHeight);
-				renderer.setSize(cw, ch);
-			// Remove any previous canvas we added earlier to avoid duplicates
-			const existingCanvas = container.querySelector('canvas');
-			if (existingCanvas) existingCanvas.remove();
-			renderer.domElement.style.width = '100%';
-			renderer.domElement.style.height = '100%';
-			renderer.domElement.style.display = 'block';
-			container.appendChild(renderer.domElement);
+	renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+	// clamp DPR to avoid huge buffer sizes and inconsistent scaling
+	const dpr = Math.min(window.devicePixelRatio || 1, 2);
+	renderer.setPixelRatio(dpr);
+	// Size to container (use false to avoid changing canvas style; we use CSS 100%)
+	const cw = Math.max(300, container.clientWidth || window.innerWidth);
+	const ch = Math.max(200, container.clientHeight || window.innerHeight);
+	renderer.setSize(cw, ch, false);
+	// Remove any previous canvas we added earlier to avoid duplicates
+	const existingCanvas = container.querySelector('canvas');
+	if (existingCanvas) existingCanvas.remove();
+	renderer.domElement.style.width = '100%';
+	renderer.domElement.style.height = '100%';
+	renderer.domElement.style.display = 'block';
+	container.appendChild(renderer.domElement);
 
-					// ensure sizes are correct after appending canvas
-					onWindowResize();
+	// ensure sizes are correct after appending canvas
+	onWindowResize();
 
 	scene = new THREE.Scene();
 	scene.background = new THREE.Color(0x202020);
 
-		camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 2000);
-			// move camera up and back and angle down for a top-down view
-			camera.position.set(0, 12, 12);
-			camera.lookAt(0, 0, 0);
+	// Initialize camera with FOV from CAMERA_CONFIG
+	camera = new THREE.PerspectiveCamera(
+		CAMERA_CONFIG.FOV, 
+		window.innerWidth / window.innerHeight, 
+		0.1, 
+		2000
+	);
+	
+	// Position camera using TILT_ANGLE from CAMERA_CONFIG
+	// Camera looks down at the cards from an elevated position
+	const angleRad = (Math.PI / 180) * CAMERA_CONFIG.TILT_ANGLE;
+	const cameraZ = 10;
+	const cameraY = Math.tan(angleRad) * cameraZ;
+	camera.position.set(0, cameraY, cameraZ);
 	camera.lookAt(0, 0, 0);
 
 	const ambient = new THREE.AmbientLight(0xffffff, 0.6);
@@ -84,32 +129,32 @@ export async function initScene(onCardClick) {
 		console.warn('Failed to load card.glb:', err);
 	}
 
-		// Back texture: try to load card_back.png, but fall back to a simple generated texture
-		backTexture = await new Promise((resolve) => {
-			texLoader.load(
-				'/assets/textures/card_back.png',
-				(tex) => resolve(tex),
-				undefined,
-				() => {
-					// Fallback: create a simple canvas texture (neutral back)
-					const canvas = document.createElement('canvas');
-					canvas.width = 256;
-					canvas.height = 256;
-					const ctx = canvas.getContext('2d');
-					ctx.fillStyle = '#444';
-					ctx.fillRect(0, 0, canvas.width, canvas.height);
-					ctx.fillStyle = '#666';
-					ctx.fillRect(12, 12, canvas.width - 24, canvas.height - 24);
-					ctx.fillStyle = '#bbb';
-					ctx.font = 'bold 64px sans-serif';
-					ctx.textAlign = 'center';
-					ctx.textBaseline = 'middle';
-					ctx.fillText('?', canvas.width / 2, canvas.height / 2 + 6);
-					const tex = new THREE.CanvasTexture(canvas);
-					resolve(tex);
-				}
-			);
-		});
+	// Back texture: try to load card_back.png, but fall back to a simple generated texture
+	backTexture = await new Promise((resolve) => {
+		texLoader.load(
+			'/assets/textures/card_back.png',
+			(tex) => resolve(tex),
+			undefined,
+			() => {
+				// Fallback: create a simple canvas texture (neutral back)
+				const canvas = document.createElement('canvas');
+				canvas.width = 256;
+				canvas.height = 256;
+				const ctx = canvas.getContext('2d');
+				ctx.fillStyle = '#444';
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+				ctx.fillStyle = '#666';
+				ctx.fillRect(12, 12, canvas.width - 24, canvas.height - 24);
+				ctx.fillStyle = '#bbb';
+				ctx.font = 'bold 64px sans-serif';
+				ctx.textAlign = 'center';
+				ctx.textBaseline = 'middle';
+				ctx.fillText('?', canvas.width / 2, canvas.height / 2 + 6);
+				const tex = new THREE.CanvasTexture(canvas);
+				resolve(tex);
+			}
+		);
+	});
 
 	animate();
 }
@@ -120,7 +165,9 @@ function onWindowResize() {
 	const h = container.clientHeight || window.innerHeight;
 	camera.aspect = w / h;
 	camera.updateProjectionMatrix();
-	renderer.setSize(w, h);
+	const dpr = Math.min(window.devicePixelRatio || 1, 2);
+	renderer.setPixelRatio(dpr);
+	renderer.setSize(w, h, false);
 }
 
 function animate() {
@@ -146,17 +193,17 @@ function onPointerClick(event) {
 	if (!obj) return;
 
 	const cardId = obj.userData.cardId;
-		if (onCardClickCallback) {
-			// lock input to prevent double-clicks while we wait for server
-			inputLocked = true;
-			// safety: release input after 2500ms if no server response
-			if (inputLockTimer) clearTimeout(inputLockTimer);
-			inputLockTimer = setTimeout(() => {
-				inputLocked = false;
-				inputLockTimer = null;
-			}, 2500);
-			onCardClickCallback(cardId);
-		}
+	if (onCardClickCallback) {
+		// lock input to prevent double-clicks while we wait for server
+		inputLocked = true;
+		// safety: release input after 2500ms if no server response
+		if (inputLockTimer) clearTimeout(inputLockTimer);
+		inputLockTimer = setTimeout(() => {
+			inputLocked = false;
+			inputLockTimer = null;
+		}, 2500);
+		onCardClickCallback(cardId);
+	}
 }
 
 function createCardInstance(cardId, value, index, total) {
@@ -167,52 +214,52 @@ function createCardInstance(cardId, value, index, total) {
 	clone.name = `card_${cardId}`;
 	clone.userData.cardId = cardId;
 
-		// Find front and back meshes by traversing children (robust against arbitrary GLB naming)
-		let frontMesh = null;
-		let backMesh = null;
+	// Find front and back meshes by traversing children (robust against arbitrary GLB naming)
+	let frontMesh = null;
+	let backMesh = null;
+	clone.traverse((node) => {
+		if (!node.isMesh) return;
+		const lname = (node.name || '').toLowerCase();
+		if (!frontMesh && /front|face|front_face/.test(lname)) frontMesh = node;
+		if (!backMesh && /back|rear|back_face/.test(lname)) backMesh = node;
+	});
+
+	// Fallbacks: pick first/second mesh if names not present
+	if (!frontMesh) {
+		// prefer a mesh whose material index is 0
+		frontMesh = clone.getObjectByProperty('isMesh', true) || null;
+	}
+	if (!backMesh) {
+		// try to find any other mesh distinct from frontMesh
 		clone.traverse((node) => {
 			if (!node.isMesh) return;
-			const lname = (node.name || '').toLowerCase();
-			if (!frontMesh && /front|face|front_face/.test(lname)) frontMesh = node;
-			if (!backMesh && /back|rear|back_face/.test(lname)) backMesh = node;
+			if (node === frontMesh) return;
+			if (!backMesh) backMesh = node;
 		});
+	}
 
-		// Fallbacks: pick first/second mesh if names not present
-		if (!frontMesh) {
-			// prefer a mesh whose material index is 0
-			frontMesh = clone.getObjectByProperty('isMesh', true) || null;
-		}
-		if (!backMesh) {
-			// try to find any other mesh distinct from frontMesh
-			clone.traverse((node) => {
-				if (!node.isMesh) return;
-				if (node === frontMesh) return;
-				if (!backMesh) backMesh = node;
-			});
-		}
+	// Apply back texture
+	if (backMesh && backMesh.material) {
+		backMesh.material = backMesh.material.clone();
+		backMesh.material.map = backTexture;
+		backMesh.material.needsUpdate = true;
+	}
 
-		// Apply back texture
-		if (backMesh && backMesh.material) {
-			backMesh.material = backMesh.material.clone();
-			backMesh.material.map = backTexture;
-			backMesh.material.needsUpdate = true;
-		}
+	// Apply front texture (placeholder if texture not yet loaded)
+	if (frontMesh && frontMesh.material) {
+		frontMesh.material = frontMesh.material.clone();
+		const tex = frontTextures.get(value) || backTexture;
+		frontMesh.material.map = tex;
+		frontMesh.material.needsUpdate = true;
+	}
 
-		// Apply front texture (placeholder if texture not yet loaded)
-		if (frontMesh && frontMesh.material) {
-			frontMesh.material = frontMesh.material.clone();
-			const tex = frontTextures.get(value) || backTexture;
-			frontMesh.material.map = tex;
-			frontMesh.material.needsUpdate = true;
-		}
+	// Scale down the imported model so cards don't overlap
+	// adjust model scale to make cards more visible
+	clone.scale.set(1.0, 1.0, 1.0);
 
-		// Scale down the imported model so cards don't overlap
-			// adjust model scale to make cards more visible
-			clone.scale.set(1.0, 1.0, 1.0);
-
-			// Position: arrange in grid by index
-			const cols = Math.ceil(Math.sqrt(total));
-			const spacing = 3.0; // reduced spacing so gaps are smaller
+	// Position: arrange in grid by index using CARD_SPACING from CAMERA_CONFIG
+	const cols = Math.ceil(Math.sqrt(total));
+	const spacing = CAMERA_CONFIG.CARD_SPACING;
 	const row = Math.floor(index / cols);
 	const col = index % cols;
 	const offsetX = -(cols - 1) * spacing * 0.5;
@@ -224,7 +271,7 @@ function createCardInstance(cardId, value, index, total) {
 
 	scene.add(clone);
 
-		return { id: cardId, value, mesh: clone, frontMesh, backMesh, isFaceUp: false, isMatched: false };
+	return { id: cardId, value, mesh: clone, frontMesh, backMesh, isFaceUp: false, isMatched: false };
 }
 
 function ensureFrontTexture(value) {
@@ -294,8 +341,8 @@ function animateFlip(cardObj, toFaceUp = true, durationMs = 400) {
 			mesh.rotation.x = startRot + (endRot - startRot) * eased;
 
 			// Swap texture at halfway (around PI/2)
-					if (!swapped && Math.abs(mesh.rotation.x - startRot) >= Math.PI / 2) {
-						setFrontTextureForMesh(cardObj, toFaceUp ? cardObj.value : null);
+			if (!swapped && Math.abs(mesh.rotation.x - startRot) >= Math.PI / 2) {
+				setFrontTextureForMesh(cardObj, toFaceUp ? cardObj.value : null);
 				swapped = true;
 			}
 
@@ -308,6 +355,42 @@ function animateFlip(cardObj, toFaceUp = true, durationMs = 400) {
 		}
 		requestAnimationFrame(step);
 	});
+}
+
+// Compute bounding box of all cards and position camera to frame them
+// Uses PADDING and TILT_ANGLE from CAMERA_CONFIG
+function fitCameraToCards() {
+	if (!camera || cards.length === 0) return;
+
+	const box = new THREE.Box3();
+	cards.forEach(c => box.expandByObject(c.mesh));
+	const size = new THREE.Vector3();
+	box.getSize(size);
+	const center = new THREE.Vector3();
+	box.getCenter(center);
+
+	// Use width (x) and depth (z) to decide scale
+	const maxDim = Math.max(size.x, size.z, 1);
+
+	// Distance calculation from vertical FOV
+	const fov = camera.fov * (Math.PI / 180);
+	const halfFov = fov / 2;
+	// distance required so that maxDim fits vertically at the given fov
+	const distance = (maxDim / 2) / Math.tan(halfFov) * CAMERA_CONFIG.PADDING;
+
+	// Calculate camera position using TILT_ANGLE
+	const tiltRad = (Math.PI / 180) * CAMERA_CONFIG.TILT_ANGLE;
+	const verticalOffset = distance * Math.sin(tiltRad);
+	const horizontalOffset = distance * Math.cos(tiltRad);
+
+	// Apply position with offsets from CAMERA_CONFIG
+	camera.position.set(
+		center.x + CAMERA_CONFIG.OFFSET_X, 
+		verticalOffset + center.y + CAMERA_CONFIG.OFFSET_Y, 
+		center.z + horizontalOffset + CAMERA_CONFIG.OFFSET_Z
+	);
+	camera.lookAt(center);
+	camera.updateProjectionMatrix();
 }
 
 export async function updateFromGameState(gameState) {
@@ -371,11 +454,17 @@ export async function updateFromGameState(gameState) {
 		}
 	}
 
-		// finished processing; release input lock
-		inputLocked = false;
-		if (inputLockTimer) {
-			clearTimeout(inputLockTimer);
-			inputLockTimer = null;
-		}
-}
+	// finished processing; release input lock
+	inputLocked = false;
+	if (inputLockTimer) {
+		clearTimeout(inputLockTimer);
+		inputLockTimer = null;
+	}
 
+	// Re-frame camera to fit all cards using settings from CAMERA_CONFIG
+	try {
+		fitCameraToCards();
+	} catch (err) {
+		console.warn('fitCameraToCards failed:', err);
+	}
+}
