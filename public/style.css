@@ -84,6 +84,45 @@ button {
 button:hover {
   background: #45a049;
 }
+/* =========================
+   Player color buttons
+   ========================= */
+
+.player-btn {
+  color: #fff;
+  font-weight: 700;
+  transition:
+    transform 0.15s ease,
+    filter 0.15s ease;
+}
+
+/* Player colors */
+.player-red {
+  background: #e53935;
+}
+
+.player-yellow {
+  background: #fbc02d;
+  color: #111; /* bättre kontrast på gult */
+}
+
+.player-blue {
+  background: #1e88e5;
+}
+
+.player-green {
+  background: #43a047;
+}
+
+.player-btn:hover {
+  transform: scale(1.03);
+  filter: brightness(0.95);
+}
+
+.player-btn:active {
+  transform: scale(0.98);
+  filter: brightness(0.9);
+}
 
 button:disabled {
   background: #666;
@@ -248,7 +287,6 @@ button:disabled {
   }
 }
 
-
 /* =========================
    Card Grid
    ========================= */
@@ -298,12 +336,6 @@ button:disabled {
   cursor: default;
 }
 
-
-
-
-
-
-
 /* Mobile (stack layout) */
 
 @media (max-width: 820px) {
@@ -327,7 +359,3 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
-
-
-
-
