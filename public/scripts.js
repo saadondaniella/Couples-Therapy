@@ -57,13 +57,18 @@ function updateGameInfo(gameState) {
     .map((p) => `${p.color}: ${p.score}`)
     .join(" | ");
 
+  const isDebug = false; // ändra till true vid behov
+
   info.innerHTML = `
-    <strong>Game ID:</strong> ${gameState.gameId}<br>
-    <strong>Players:</strong> ${gameState.players.length}<br>
-    <strong>Status:</strong> ${gameState.status}<br>
-    <strong>Active Player:</strong> <span style="color: ${activePlayer.color}">${activePlayer.color}</span><br>
-    <strong>Scores:</strong> ${playerScores}
-  `;
+  ${isDebug ? `<strong>Game ID:</strong> ${gameState.gameId}<br>` : ""}
+  <strong>Players:</strong> ${gameState.players.length}<br>
+  <strong>Status:</strong> ${gameState.status}<br>
+  <strong>Active Player:</strong>
+  <span style="color: ${activePlayer.color}">
+    ${activePlayer.color}
+  </span><br>
+  <strong>Scores:</strong> ${playerScores}
+`;
 }
 
 // ===== RENDER CARDS =====

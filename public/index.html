@@ -4,31 +4,41 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="/style.css" />
-    <title>3D Memory Game - Step 5 Test</title>
+    <title>Couples Therapy</title>
   </head>
   <body>
-    <h1>Couples Therapy</h1>
-    <p>TestData</p>
+    <div class="app">
+      <!-- LEFT SIDE (Sidebar) -->
+      <aside class="sidebar">
+        <header class="header">
+          <h1>Couples Therapy</h1>
+        </header>
 
-    <div class="controls">
-      <h3>Connection</h3>
-      <div id="connectionStatus" class="status disconnected">Connecting...</div>
+        <div class="panel controls">
+          <h3>Select Players</h3>
 
-      <h3>Start Game</h3>
-      <button id="btn1Player" onclick="startGame(1)">1 Player</button>
-      <button id="btn2Player" onclick="startGame(2)">2 Players</button>
-      <button id="btn3Player" onclick="startGame(3)">3 Players</button>
-      <button id="btn4Player" onclick="startGame(4)">4 Players</button>
+          <div class="player-grid">
+            <button id="btn1Player" onclick="startGame(1)">1 Player</button>
+            <button id="btn2Player" onclick="startGame(2)">2 Players</button>
+            <button id="btn3Player" onclick="startGame(3)">3 Players</button>
+            <button id="btn4Player" onclick="startGame(4)">4 Players</button>
+          </div>
+        </div>
+
+        <div id="errorBox" class="panel"></div>
+
+        <div class="panel game-info">
+          <h3>Game Info</h3>
+          <div id="gameInfo">No game started</div>
+        </div>
+      </aside>
+
+      <!-- RIGHT SIDE (Board) -->
+      <section class="board">
+        <div id="cardGrid"></div>
+      </section>
     </div>
 
-    <div id="errorBox"></div>
-
-    <div class="game-info">
-      <h3>Game Info</h3>
-      <div id="gameInfo">No game started</div>
-    </div>
-
-    <div id="cardGrid"></div>
-<script type="module" src="scripts.js"></script>
+    <script type="module" src="scripts.js"></script>
   </body>
 </html>
