@@ -81,9 +81,6 @@ button {
   font-weight: 700;
 }
 
-button:hover {
-  background: #45a049;
-}
 /* =========================
    Player color buttons
    ========================= */
@@ -103,7 +100,7 @@ button:hover {
 
 .player-yellow {
   background: #fbc02d;
-  color: #111; /* bättre kontrast på gult */
+  color: #111;
 }
 
 .player-blue {
@@ -112,6 +109,43 @@ button:hover {
 
 .player-green {
   background: #43a047;
+}
+
+.player-red {
+  background: #e53935;
+}
+.player-red:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(229, 57, 53, 0.6);
+  filter: brightness(1.1);
+}
+
+.player-yellow {
+  background: #fbc02d;
+  color: #111;
+}
+.player-yellow:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(251, 192, 45, 0.6);
+  filter: brightness(1.1);
+}
+
+.player-blue {
+  background: #1e88e5;
+}
+.player-blue:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(30, 136, 229, 0.6);
+  filter: brightness(1.1);
+}
+
+.player-green {
+  background: #43a047;
+}
+.player-green:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(67, 160, 71, 0.6);
+  filter: brightness(1.1);
 }
 
 .player-btn:hover {
