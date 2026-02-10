@@ -1,6 +1,10 @@
 
  Couples Therapy
 
+**Prerequisites**
+Run:
+npm install ws
+
 **Concept:**
 A classic *Memory / Concentration* game played in the browser. Cards are laid out face-down. The player flips two cards at a time, trying to find matching pairs.
 
