@@ -14,7 +14,7 @@ import {
   RENDER_CONFIG,
 } from "./config.js";
 import { animateCardFlip } from "./animator.js";
-import { createLiquidGlassMaterial } from "./liquidglassshader.js";
+import { createLiquidGlassMaterial } from "./liquidGlassShader.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MODULE STATE
