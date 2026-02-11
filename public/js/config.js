@@ -9,27 +9,27 @@
 export const CAMERA_CONFIG = {
 	// Field of View (in degrees) - Higher = wider view, Lower = more zoomed/telephoto
 	// Recommended range: 40-60 degrees. Default: 50
-	FOV: 40,
+	FOV: 30,
 	
 	// Camera tilt angle (in degrees) - How much the camera looks down at the cards
 	// 0° = straight ahead, 90° = directly overhead
 	// Recommended range: 20-45 degrees. Default: 30
-	TILT_ANGLE: 25,
+	TILT_ANGLE: 85,
 	
 	// Camera distance multiplier when auto-framing cards
 	// Higher = camera pulls back further, Lower = camera gets closer
 	// Recommended range: 1.0-1.3. Default: 1.15
-	PADDING: 1.5,
+	PADDING: 1.1,
 	
 	// Card spacing in 3D units
 	// Higher = more space between cards, Lower = cards closer together
 	// Recommended range: 2.5-4.0. Default: 3.2
-	CARD_SPACING: 1.7,
+	CARD_SPACING: 2.5,
 	
 	// Camera position offset (applied after auto-framing)
 	OFFSET_X: 0,
-	OFFSET_Y: 1,
-	OFFSET_Z: 0
+	OFFSET_Y: -6,
+	OFFSET_Z: 15,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -40,7 +40,7 @@ export const RENDER_CONFIG = {
   ANTIALIAS: true,
   ALPHA: true,
   MAX_DPR: 2, // Maximum device pixel ratio
-  MIN_WIDTH: 300,
+  MIN_WIDTH: 200,
   MIN_HEIGHT: 200,
 
   // Shadow settings
@@ -76,7 +76,7 @@ export const HDRI_CONFIG = {
 // CARD SETTINGS
 // ═══════════════════════════════════════════════════════════════════════════
 export const CARD_CONFIG = {
-  TARGET_SIZE: 2.0, // Target card size after auto-scaling
+  TARGET_SIZE: 3.0, // Target card size after auto-scaling
   MATCH_RAISE_HEIGHT: 0.06, // How much matched cards raise
   MATCH_TINT_COLOR: 0x857f74, // Green tint for matched cards
   MATCH_TINT_AMOUNT: 0.6, // How much to tint matched cards (0-1)
