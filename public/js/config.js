@@ -14,7 +14,7 @@ export const CAMERA_CONFIG = {
 	// Camera tilt angle (in degrees) - How much the camera looks down at the cards
 	// 0° = straight ahead, 90° = directly overhead
 	// Recommended range: 20-45 degrees. Default: 30
-	TILT_ANGLE: 25,
+	TILT_ANGLE: 45,
 	
 	// Camera distance multiplier when auto-framing cards
 	// Higher = camera pulls back further, Lower = camera gets closer
@@ -92,17 +92,17 @@ export const LIQUID_GLASS_CONFIG = {
 	// Index of Refraction (IOR)
 	// 1.0 = air, 1.33 = water, 1.5 = glass, 2.4 = diamond
 	// Recommended range: 1.2-2.0
-	IOR: 1.0,
+	IOR: 1.5, // Glass IOR for visible refraction
 	
 	// Thickness/depth of the glass
 	// Higher = thicker glass appearance
 	// Recommended range: 0.5-3.0
-	THICKNESS: 0.5,
+	THICKNESS: 1.5,
 	
 	// Reflectivity strength
 	// Higher = more mirror-like, Lower = more transparent
 	// Recommended range: 0.3-1.0
-	REFLECTIVITY: 1.0,
+	REFLECTIVITY: 0.8,
 	
 	// Fresnel power (edge glow effect)
 	// Higher = sharper edge highlight, Lower = softer
@@ -116,28 +116,28 @@ export const LIQUID_GLASS_CONFIG = {
 	
 	// Overall opacity
 	// Recommended range: 0.7-1.0
-	OPACITY: 0.65,
+	OPACITY: 0.9,
 	
 	// Chromatic aberration (rainbow edge effect)
 	// Higher = more color separation, 0 = no aberration
-	// Recommended range: 0.0-2.0
-	CHROMATIC_ABERRATION: 2.0,
+	// Recommended range: 0.0-5.0 (increased for visibility)
+	CHROMATIC_ABERRATION: 3.0, // Increased for visible effect
 	
 	// Liquid distortion amount
 	// Higher = more wavy/liquid effect
 	// Recommended range: 0.0-0.3
-	DISTORTION: 0.8,
+	DISTORTION: 0.3,
 	
 	// Distortion pattern scale
 	// Higher = smaller waves, Lower = larger waves
 	// Recommended range: 2.0-20.0
-	DISTORTION_SCALE: 20.0,
+	DISTORTION_SCALE: 15.0,
 	
 	// Animate the liquid movement (true/false)
 	ANIMATE: true,
 	
 	// Animation speed multiplier (only used if ANIMATE is true)
-	ANIMATION_SPEED: 2.0,
+	ANIMATION_SPEED: 1.5,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -182,5 +182,5 @@ export const LIGHTING_CONFIG = {
 	// Shadow-casting directional light (for card shadows)
 	SHADOW_LIGHT_ENABLED: true,
 	SHADOW_LIGHT_INTENSITY: 0.8,
-	SHADOW_LIGHT_POSITION: { x: 5, y: 8, z: 5 }
+	SHADOW_LIGHT_POSITION: { x: -5, y: 6, z: -7 }
 };

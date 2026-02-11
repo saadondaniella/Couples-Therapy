@@ -60,47 +60,93 @@ varying vec2 vUv;
 
 // Fresnel effect (Schlick's approximation)
 float fresnel(vec3 viewDir, vec3 normal, float power) {
-    float cosTheta = dot(viewDir, normal);
+    float cosTheta = abs(dot(viewDir, normal)); // abs for consistent edges
     float f0 = pow((1.0 - ior) / (1.0 + ior), 2.0);
     return f0 + (1.0 - f0) * pow(1.0 - cosTheta, power);
 }
 
+// Improved noise for liquid distortion
+vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+
+float snoise(vec2 v) {
+    const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+                       -0.577350269189626, 0.024390243902439);
+    vec2 i  = floor(v + dot(v, C.yy) );
+    vec2 x0 = v -   i + dot(i, C.xx);
+    vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+    vec4 x12 = x0.xyxy + C.xxzz;
+    x12.xy -= i1;
+    i = mod289(i);
+    vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
+        + i.x + vec3(0.0, i1.x, 1.0 ));
+    vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+    m = m*m;
+    m = m*m;
+    vec3 x = 2.0 * fract(p * C.www) - 1.0;
+    vec3 h = abs(x) - 0.5;
+    vec3 ox = floor(x + 0.5);
+    vec3 a0 = x - ox;
+    m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+    vec3 g;
+    g.x  = a0.x  * x0.x  + h.x  * x0.y;
+    g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+    return 130.0 * dot(m, g);
+}
+
 // Animated liquid distortion
 vec3 getDistortedNormal(vec3 normal, vec2 uv, float time) {
-    // Create flowing liquid effect
-    float wave1 = sin(uv.x * distortionScale + time * 0.5) * 0.5;
-    float wave2 = cos(uv.y * distortionScale + time * 0.3) * 0.5;
-    float wave3 = sin((uv.x + uv.y) * distortionScale * 0.5 + time * 0.7) * 0.3;
+    float n1 = snoise(uv * distortionScale + vec2(time * 0.3, time * 0.2));
+    float n2 = snoise(uv * distortionScale * 2.0 - vec2(time * 0.2, time * 0.3));
+    float n3 = snoise(uv * distortionScale * 0.5 + vec2(time * 0.15, -time * 0.15));
     
-    vec3 distortionVec = vec3(wave1, wave2, wave3) * distortion;
+    vec3 distortionVec = vec3(
+        n1 * 0.4 + n2 * 0.2,
+        n2 * 0.4 + n3 * 0.2,
+        n3 * 0.4 + n1 * 0.2
+    ) * distortion;
+    
     return normalize(normal + distortionVec);
 }
 
 void main() {
-    // Get view direction
-    vec3 viewDir = normalize(vViewPosition);
+    // CRITICAL: Use world space for view direction
+    vec3 viewDir = normalize(cameraPosition - vWorldPosition);
     
-    // Apply liquid distortion to normal
+    // Get and distort normal
     vec3 normal = normalize(vWorldNormal);
     vec3 distortedNormal = getDistortedNormal(normal, vUv, time);
     
     // Calculate reflection direction
     vec3 reflectDir = reflect(-viewDir, distortedNormal);
     
-    // Calculate refraction direction with chromatic aberration
-    vec3 refractDirR = refract(-viewDir, distortedNormal, 1.0 / (ior + chromaticAberration * 0.01));
-    vec3 refractDirG = refract(-viewDir, distortedNormal, 1.0 / ior);
-    vec3 refractDirB = refract(-viewDir, distortedNormal, 1.0 / (ior - chromaticAberration * 0.01));
+    // Calculate refraction with STRONG chromatic aberration
+    // Multiply aberration for more visible effect
+    float chromaticStrength = chromaticAberration * 0.05;
+    float iorR = ior + chromaticStrength;
+    float iorG = ior;
+    float iorB = ior - chromaticStrength;
     
-    // Sample environment map with chromatic aberration
+    vec3 refractDirR = refract(-viewDir, distortedNormal, 1.0 / iorR);
+    vec3 refractDirG = refract(-viewDir, distortedNormal, 1.0 / iorG);
+    vec3 refractDirB = refract(-viewDir, distortedNormal, 1.0 / iorB);
+    
+    // Fallback to reflection if total internal reflection occurs
+    if (length(refractDirR) < 0.01) refractDirR = reflectDir;
+    if (length(refractDirG) < 0.01) refractDirG = reflectDir;
+    if (length(refractDirB) < 0.01) refractDirB = reflectDir;
+    
+    // Sample environment map for reflection
     vec3 reflectColor = textureCube(envMap, reflectDir).rgb;
     
+    // Sample environment map with chromatic aberration
     float refractR = textureCube(envMap, refractDirR).r;
     float refractG = textureCube(envMap, refractDirG).g;
     float refractB = textureCube(envMap, refractDirB).b;
     vec3 refractColor = vec3(refractR, refractG, refractB);
     
-    // Calculate fresnel
+    // Calculate fresnel (edge glow)
     float fresnelFactor = fresnel(viewDir, distortedNormal, fresnelPower);
     
     // Mix reflection and refraction based on fresnel
@@ -109,11 +155,14 @@ void main() {
     // Apply glass color tint
     finalColor *= glassColor;
     
-    // Add thickness/depth effect
+    // Add depth/thickness effect
     float depthFactor = 1.0 - pow(fresnelFactor, thickness);
-    finalColor = mix(finalColor, glassColor * 0.5, depthFactor * 0.3);
+    vec3 depthColor = glassColor * 0.3;
+    finalColor = mix(finalColor, depthColor, depthFactor * 0.4);
     
-    // Output with opacity
+    // Boost brightness for more striking effect
+    finalColor *= 1.8;
+    
     gl_FragColor = vec4(finalColor, opacity);
 }
 `;
@@ -149,12 +198,19 @@ export function createLiquidGlassMaterial(envMap, isSkinnedMesh = true) {
         ]),
         vertexShader: vertexShader,
         fragmentShader: fragmentShader,
-        side: THREE.DoubleSide,
+        side: THREE.FrontSide, // Only render front faces (back-face culling)
         transparent: true,
         skinning: isSkinnedMesh,
         lights: false,
-        depthWrite: false // Important for proper transparency sorting
+        depthWrite: false, // Important for proper transparency
+        depthTest: true
     });
+    
+    // CRITICAL: Ensure no texture is used
+    material.map = null;
+    material.defines = material.defines || {};
+    material.defines.USE_MAP = false;
+    material.needsUpdate = true;
     
     return material;
 }
