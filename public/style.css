@@ -29,7 +29,7 @@ body {
 .header h1 {
   font-family: "Love Ya Like A Sister", cursive;
   margin: 0;
-  color: #4caf50;
+  color: lightblue;
   font-size: 3.5rem;
   text-align: center;
 }
@@ -37,7 +37,6 @@ body {
 .board {
   height: 100%;
   background: #111;
-  border-radius: 16px;
   padding: 2%;
   display: flex;
   align-items: center;

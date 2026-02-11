@@ -33,6 +33,11 @@ let resizeTimeout = null;
 let envMap = null;
 let shadowCatcher = null;
 
+// Target aspect ratio (width / height) to keep scene almost square
+const DESIRED_ASPECT = 1.1;
+// Padding inside the `cardGrid` frame so the frame color is visible around canvas
+const FRAME_PADDING = 24; // pixels
+
 // External references
 let cardsArray = [];
 let onCardClickCallback = null;
@@ -95,18 +100,53 @@ export async function initRenderer(onCardClick) {
 
   const cw = Math.max(
     RENDER_CONFIG.MIN_WIDTH,
-    container.clientWidth || window.innerWidth
+    container.clientWidth || window.innerWidth,
   );
   const ch = Math.max(
     RENDER_CONFIG.MIN_HEIGHT,
-    container.clientHeight || window.innerHeight
+    container.clientHeight || window.innerHeight,
   );
 
-  renderer.setSize(cw, ch, false);
+  // Make the container act like a framed viewport. Use `width:100%` with a
+  // `maxWidth` so it remains responsive, but never grows wider than the
+  // calculated outer size. Use `aspectRatio` so the outer frame keeps the
+  // desired proportions responsively.
+  const outerMaxWidth = Math.min(cw, Math.round(DESIRED_ASPECT * ch));
+  const outerMaxHeight = ch;
+  try {
+    container.style.boxSizing = "border-box";
+    container.style.padding = `${FRAME_PADDING}px`;
+    container.style.width = "100%";
+    container.style.maxWidth = `${outerMaxWidth}px`;
+    // Let the aspect-ratio enforce height responsively
+    container.style.aspectRatio = String(DESIRED_ASPECT);
+    container.style.margin = "0 auto";
+  } catch (e) {
+    // ignore if container styles are read-only for some reason
+  }
+
+  // Now that container sizing is set, measure the actual outer size and size
+  // the inner renderer accordingly (outer minus padding).
+  const measuredOuterW = Math.max(
+    RENDER_CONFIG.MIN_WIDTH,
+    container.clientWidth || outerMaxWidth,
+  );
+  const measuredOuterH = Math.max(
+    RENDER_CONFIG.MIN_HEIGHT,
+    container.clientHeight || outerMaxHeight,
+  );
+  const measuredInnerW = Math.max(1, measuredOuterW - FRAME_PADDING * 2);
+  const measuredInnerH = Math.max(1, measuredOuterH - FRAME_PADDING * 2);
+
+  renderer.setSize(measuredInnerW, measuredInnerH, false);
 
   container.querySelector("canvas")?.remove();
-  renderer.domElement.style.width = "100%";
-  renderer.domElement.style.height = "100%";
+  renderer.domElement.style.width = `${measuredInnerW}px`;
+  renderer.domElement.style.height = `${measuredInnerH}px`;
+  renderer.domElement.style.position = "absolute";
+  renderer.domElement.style.left = "50%";
+  renderer.domElement.style.top = "50%";
+  renderer.domElement.style.transform = "translate(-50%, -50%)";
   renderer.domElement.style.display = "block";
   container.appendChild(renderer.domElement);
 
@@ -120,7 +160,6 @@ export async function initRenderer(onCardClick) {
       // Convert to PMREM (suitable for sampling as a cube texture)
       envMap = pmremGenerator.fromEquirectangular(equirect).texture;
       scene.environment = envMap;
-
 
       if (HDRI_CONFIG.SHOW_AS_BACKGROUND) {
         // Use the original equirectangular texture as the visible background
@@ -164,11 +203,14 @@ export async function initRenderer(onCardClick) {
   const containerWidth = container.clientWidth || window.innerWidth;
   const containerHeight = container.clientHeight || window.innerHeight;
 
+  // Camera aspect should match the actual inner canvas aspect (after layout)
+  const camInnerW = Math.max(1, container.clientWidth - FRAME_PADDING * 2);
+  const camInnerH = Math.max(1, container.clientHeight - FRAME_PADDING * 2);
   camera = new THREE.PerspectiveCamera(
     CAMERA_CONFIG.FOV,
-    cw / ch,
+    Math.max(0.0001, camInnerW / camInnerH),
     0.1,
-    2000
+    2000,
   );
 
   const angleRad = THREE.MathUtils.degToRad(CAMERA_CONFIG.TILT_ANGLE);
@@ -181,43 +223,41 @@ export async function initRenderer(onCardClick) {
   // Lights
   const ambient = new THREE.AmbientLight(
     LIGHTING_CONFIG.AMBIENT_COLOR,
-    LIGHTING_CONFIG.AMBIENT_INTENSITY
+    LIGHTING_CONFIG.AMBIENT_INTENSITY,
   );
   scene.add(ambient);
 
   const dir = new THREE.DirectionalLight(
     LIGHTING_CONFIG.DIRECTIONAL_COLOR,
-    LIGHTING_CONFIG.DIRECTIONAL_INTENSITY
+    LIGHTING_CONFIG.DIRECTIONAL_INTENSITY,
   );
   dir.position.set(
     LIGHTING_CONFIG.DIRECTIONAL_POSITION.x,
     LIGHTING_CONFIG.DIRECTIONAL_POSITION.y,
-    LIGHTING_CONFIG.DIRECTIONAL_POSITION.z
+    LIGHTING_CONFIG.DIRECTIONAL_POSITION.z,
   );
   scene.add(dir);
 
   if (LIGHTING_CONFIG.SHADOW_LIGHT_ENABLED && RENDER_CONFIG.SHADOWS_ENABLED) {
     const shadowLight = new THREE.DirectionalLight(
       0xffffff,
-      LIGHTING_CONFIG.SHADOW_LIGHT_INTENSITY
+      LIGHTING_CONFIG.SHADOW_LIGHT_INTENSITY,
     );
 
     shadowLight.position.set(
       LIGHTING_CONFIG.SHADOW_LIGHT_POSITION.x,
       LIGHTING_CONFIG.SHADOW_LIGHT_POSITION.y,
-      LIGHTING_CONFIG.SHADOW_LIGHT_POSITION.z
+      LIGHTING_CONFIG.SHADOW_LIGHT_POSITION.z,
     );
-
 
     shadowLight.castShadow = true;
     shadowLight.shadow.mapSize.set(
       RENDER_CONFIG.SHADOW_MAP_SIZE,
-      RENDER_CONFIG.SHADOW_MAP_SIZE
+      RENDER_CONFIG.SHADOW_MAP_SIZE,
     );
 
     shadowLight.shadow.bias = RENDER_CONFIG.SHADOW_BIAS;
     shadowLight.shadow.radius = RENDER_CONFIG.SHADOW_RADIUS;
-
 
     scene.add(shadowLight);
   }
@@ -304,7 +344,6 @@ function createShadowCatcher() {
   shadowCatcher.receiveShadow = true;
   shadowCatcher.name = "shadowCatcher";
 
-
   scene.add(shadowCatcher);
 }
 
@@ -357,12 +396,45 @@ function onWindowResize() {
   w = Math.max(w, RENDER_CONFIG.MIN_WIDTH);
   h = Math.max(h, RENDER_CONFIG.MIN_HEIGHT);
 
-  camera.aspect = w / h;
+  // Keep canvas from becoming too wide; clamp to DESIRED_ASPECT when needed.
+  // Use responsive container sizing: `width:100%` with a `maxWidth` so the
+  // framed container can shrink below the max size but won't grow beyond it.
+  const outerLimitW = Math.round(DESIRED_ASPECT * h);
+  try {
+    container.style.boxSizing = "border-box";
+    container.style.padding = `${FRAME_PADDING}px`;
+    container.style.width = "100%";
+    container.style.maxWidth = `${outerLimitW}px`;
+    container.style.aspectRatio = String(DESIRED_ASPECT);
+    container.style.margin = "0 auto";
+  } catch (e) {
+    // ignore
+  }
+
+  // Measure actual outer dimensions after applying responsive constraints
+  const actualOuterW = Math.max(
+    RENDER_CONFIG.MIN_WIDTH,
+    container.clientWidth || w,
+  );
+  const actualOuterH = Math.max(
+    RENDER_CONFIG.MIN_HEIGHT,
+    container.clientHeight || h,
+  );
+  const actualInnerW = Math.max(1, actualOuterW - FRAME_PADDING * 2);
+  const actualInnerH = Math.max(1, actualOuterH - FRAME_PADDING * 2);
+
+  camera.aspect = actualInnerW / actualInnerH;
   camera.updateProjectionMatrix();
 
   const dpr = Math.min(window.devicePixelRatio || 1, RENDER_CONFIG.MAX_DPR);
   renderer.setPixelRatio(dpr);
-  renderer.setSize(w, h, false);
+  renderer.setSize(actualInnerW, actualInnerH, false);
+  renderer.domElement.style.width = `${actualInnerW}px`;
+  renderer.domElement.style.height = `${actualInnerH}px`;
+  renderer.domElement.style.position = "absolute";
+  renderer.domElement.style.left = "50%";
+  renderer.domElement.style.top = "50%";
+  renderer.domElement.style.transform = "translate(-50%, -50%)";
 }
 
 function handleResize() {
@@ -384,7 +456,7 @@ function onPointerClick(event) {
   raycaster.setFromCamera({ x, y }, camera);
   const intersects = raycaster.intersectObjects(
     cardsArray.map((c) => c.mesh),
-    true
+    true,
   );
 
   if (intersects.length === 0) return;
@@ -429,7 +501,6 @@ export function triggerResize() {
 export function setHDRIBackgroundVisible(visible) {
   if (!scene || !envMap) return;
 
-
   if (visible) {
     scene.background = envMap;
   } else {
@@ -440,4 +511,3 @@ export function setHDRIBackgroundVisible(visible) {
 
   console.log(`🌅 HDRI background ${visible ? "shown" : "hidden"}`);
 }
-
