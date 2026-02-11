@@ -1,16 +1,22 @@
 /**
  * Renderer Module
- * Handles Three.js scene initialization, camera, lights, and render loop
+ * Handles Three.js scene initialization, camera, lights, HDRI, shadows, and render loop
  */
 
 import * as THREE from "https://esm.sh/three@0.152.2";
+import { RGBELoader } from "https://esm.sh/three@0.152.2/examples/jsm/loaders/RGBELoader.js";
+
 import {
   CAMERA_CONFIG,
   RENDER_CONFIG,
   LIGHTING_CONFIG,
   ANIMATION_CONFIG,
+  HDRI_CONFIG,
+  LIQUID_GLASS_CONFIG,
 } from "./config.js";
+
 import { updateAnimations } from "./animator.js";
+import { updateLiquidGlassShader } from "./liquidglassshader.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MODULE STATE
@@ -24,8 +30,10 @@ let container = null;
 let clock = new THREE.Clock();
 let animationFrameId = null;
 let resizeTimeout = null;
+let envMap = null;
+let shadowCatcher = null;
 
-// External references (set by other modules)
+// External references
 let cardsArray = [];
 let onCardClickCallback = null;
 
@@ -33,25 +41,20 @@ let onCardClickCallback = null;
 // INITIALIZATION
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Initialize the Three.js renderer and scene
- * @param {function} onCardClick - Callback when a card is clicked
- * @returns {object} Scene, camera, and renderer references
- */
-export function initRenderer(onCardClick) {
+export async function initRenderer(onCardClick) {
   onCardClickCallback = onCardClick;
 
   // Setup container
   const grid = document.getElementById("cardGrid");
+
   if (grid) {
     container = grid;
-    // Ensure grid can contain canvas and won't collapse
-    container.style.position = container.style.position || "relative";
+    container.style.position ||= "relative";
     container.style.overflow = "hidden";
     container.style.minWidth = `${RENDER_CONFIG.MIN_WIDTH}px`;
     container.style.minHeight = `${RENDER_CONFIG.MIN_HEIGHT}px`;
-    container.style.width = container.style.width || "100%";
-    container.style.height = container.style.height || "100%";
+    container.style.width ||= "100%";
+    container.style.height ||= "100%";
   } else {
     container = document.createElement("div");
     container.id = "threejs-root";
@@ -62,41 +65,100 @@ export function initRenderer(onCardClick) {
     container.style.height = "100%";
     container.style.minWidth = `${RENDER_CONFIG.MIN_WIDTH}px`;
     container.style.minHeight = `${RENDER_CONFIG.MIN_HEIGHT}px`;
-    container.style.pointerEvents = "auto";
     document.body.appendChild(container);
   }
 
-  // Initialize WebGL renderer
+  // Renderer
   renderer = new THREE.WebGLRenderer({
     antialias: RENDER_CONFIG.ANTIALIAS,
     alpha: RENDER_CONFIG.ALPHA,
   });
+
+  // Use physically correct lighting and sensible color/tone settings
+  renderer.physicallyCorrectLights = true;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = HDRI_CONFIG.INTENSITY || 1.0;
+
+  // PMREM generator for converting equirectangular HDR to a cube-like env map
+  const pmremGenerator = new THREE.PMREMGenerator(renderer);
+  pmremGenerator.compileEquirectangularShader();
+
+  // Enable shadows
+  if (RENDER_CONFIG.SHADOWS_ENABLED) {
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  }
 
   const dpr = Math.min(window.devicePixelRatio || 1, RENDER_CONFIG.MAX_DPR);
   renderer.setPixelRatio(dpr);
 
   const cw = Math.max(
     RENDER_CONFIG.MIN_WIDTH,
-    container.clientWidth || window.innerWidth,
+    container.clientWidth || window.innerWidth
   );
   const ch = Math.max(
     RENDER_CONFIG.MIN_HEIGHT,
-    container.clientHeight || window.innerHeight,
+    container.clientHeight || window.innerHeight
   );
+
   renderer.setSize(cw, ch, false);
 
-  // Remove any previous canvas
-  const existingCanvas = container.querySelector("canvas");
-  if (existingCanvas) existingCanvas.remove();
-
+  container.querySelector("canvas")?.remove();
   renderer.domElement.style.width = "100%";
   renderer.domElement.style.height = "100%";
   renderer.domElement.style.display = "block";
   container.appendChild(renderer.domElement);
 
-  // Initialize scene
+  // Scene
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(RENDER_CONFIG.BACKGROUND_COLOR);
+
+  // Load HDRI if enabled
+  if (HDRI_CONFIG.ENABLED) {
+    try {
+      const equirect = await loadHDRI(HDRI_CONFIG.PATH);
+      // Convert to PMREM (suitable for sampling as a cube texture)
+      envMap = pmremGenerator.fromEquirectangular(equirect).texture;
+      scene.environment = envMap;
+
+
+      if (HDRI_CONFIG.SHOW_AS_BACKGROUND) {
+        // Use the original equirectangular texture as the visible background
+        scene.background = equirect;
+        scene.backgroundBlurriness = HDRI_CONFIG.BACKGROUND_BLUR;
+        // Do not dispose equirect since it's used as background
+      } else {
+        scene.background = new THREE.Color(RENDER_CONFIG.BACKGROUND_COLOR);
+        if (equirect.dispose) equirect.dispose();
+      }
+
+      console.log("✅ HDRI loaded and PMREM generated successfully");
+    } catch (err) {
+      console.warn("⚠️  Failed to load HDRI, using fallback:", err);
+      scene.background = new THREE.Color(RENDER_CONFIG.BACKGROUND_COLOR);
+      // Create a simple equirectangular fallback and convert to PMREM
+      const fallbackEquirect = createFallbackEnvMap();
+      envMap = pmremGenerator.fromEquirectangular(fallbackEquirect).texture;
+      // fallbackEquirect is not used as visible background here, dispose it
+      if (fallbackEquirect.dispose) fallbackEquirect.dispose();
+      scene.environment = envMap;
+      scene.background = new THREE.Color(RENDER_CONFIG.BACKGROUND_COLOR);
+    }
+  } else {
+    scene.background = new THREE.Color(RENDER_CONFIG.BACKGROUND_COLOR);
+    const fallbackEquirect = createFallbackEnvMap();
+    envMap = pmremGenerator.fromEquirectangular(fallbackEquirect).texture;
+    if (fallbackEquirect.dispose) fallbackEquirect.dispose();
+    scene.environment = envMap;
+    scene.background = new THREE.Color(RENDER_CONFIG.BACKGROUND_COLOR);
+  }
+
+  // Dispose PMREM generator to free resources
+  try {
+    pmremGenerator.dispose();
+  } catch (e) {
+    // ignore
+  }
 
   // Initialize camera
   const containerWidth = container.clientWidth || window.innerWidth;
@@ -104,53 +166,146 @@ export function initRenderer(onCardClick) {
 
   camera = new THREE.PerspectiveCamera(
     CAMERA_CONFIG.FOV,
-    containerWidth / containerHeight,
+    cw / ch,
     0.1,
-    2000,
+    2000
   );
 
-  // Position camera using TILT_ANGLE
-  const angleRad = (Math.PI / 180) * CAMERA_CONFIG.TILT_ANGLE;
+  const angleRad = THREE.MathUtils.degToRad(CAMERA_CONFIG.TILT_ANGLE);
   const cameraZ = 10;
   const cameraY = Math.tan(angleRad) * cameraZ;
+
   camera.position.set(0, cameraY, cameraZ);
   camera.lookAt(0, 0, 0);
 
-  // Add lights
+  // Lights
   const ambient = new THREE.AmbientLight(
     LIGHTING_CONFIG.AMBIENT_COLOR,
-    LIGHTING_CONFIG.AMBIENT_INTENSITY,
+    LIGHTING_CONFIG.AMBIENT_INTENSITY
   );
   scene.add(ambient);
 
   const dir = new THREE.DirectionalLight(
     LIGHTING_CONFIG.DIRECTIONAL_COLOR,
-    LIGHTING_CONFIG.DIRECTIONAL_INTENSITY,
+    LIGHTING_CONFIG.DIRECTIONAL_INTENSITY
   );
   dir.position.set(
     LIGHTING_CONFIG.DIRECTIONAL_POSITION.x,
     LIGHTING_CONFIG.DIRECTIONAL_POSITION.y,
-    LIGHTING_CONFIG.DIRECTIONAL_POSITION.z,
+    LIGHTING_CONFIG.DIRECTIONAL_POSITION.z
   );
   scene.add(dir);
 
-  // Initialize raycaster for click detection
+  if (LIGHTING_CONFIG.SHADOW_LIGHT_ENABLED && RENDER_CONFIG.SHADOWS_ENABLED) {
+    const shadowLight = new THREE.DirectionalLight(
+      0xffffff,
+      LIGHTING_CONFIG.SHADOW_LIGHT_INTENSITY
+    );
+
+    shadowLight.position.set(
+      LIGHTING_CONFIG.SHADOW_LIGHT_POSITION.x,
+      LIGHTING_CONFIG.SHADOW_LIGHT_POSITION.y,
+      LIGHTING_CONFIG.SHADOW_LIGHT_POSITION.z
+    );
+
+
+    shadowLight.castShadow = true;
+    shadowLight.shadow.mapSize.set(
+      RENDER_CONFIG.SHADOW_MAP_SIZE,
+      RENDER_CONFIG.SHADOW_MAP_SIZE
+    );
+
+    shadowLight.shadow.bias = RENDER_CONFIG.SHADOW_BIAS;
+    shadowLight.shadow.radius = RENDER_CONFIG.SHADOW_RADIUS;
+
+
+    scene.add(shadowLight);
+  }
+
+  if (RENDER_CONFIG.SHADOWS_ENABLED) {
+    createShadowCatcher();
+  }
+
   raycaster = new THREE.Raycaster();
 
-  // Event listeners
   window.addEventListener("resize", handleResize);
   if (window.visualViewport) {
     window.visualViewport.addEventListener("resize", handleResize);
   }
   window.addEventListener("click", onPointerClick);
 
-  // Initial resize
   onWindowResize();
-
-  // Start render loop
   startRenderLoop();
 
-  return { scene, camera, renderer };
+  return { scene, camera, renderer, envMap };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HDRI LOADER
+// ═══════════════════════════════════════════════════════════════════════════
+
+function loadHDRI(path) {
+  return new Promise((resolve, reject) => {
+    new RGBELoader().load(
+      path,
+      (texture) => {
+        const pmrem = new THREE.PMREMGenerator(renderer);
+        pmrem.compileEquirectangularShader();
+
+        const env = pmrem.fromEquirectangular(texture).texture;
+
+        texture.dispose();
+        pmrem.dispose();
+
+        resolve(env);
+      },
+      undefined,
+      (error) => {
+        reject(error);
+      },
+    );
+  });
+}
+
+function createFallbackEnvMap() {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+
+  // Create a simple gradient
+  const gradient = ctx.createLinearGradient(0, 0, 0, size);
+  gradient.addColorStop(0, "#87CEEB"); // Sky blue
+  gradient.addColorStop(1, "#E0F6FF"); // Light blue
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.mapping = THREE.EquirectangularReflectionMapping;
+
+  return texture;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SHADOW CATCHER
+// ═══════════════════════════════════════════════════════════════════════════
+
+function createShadowCatcher() {
+  const geometry = new THREE.PlaneGeometry(100, 100);
+
+  // Create custom shadow catcher material
+  const material = new THREE.ShadowMaterial();
+  material.opacity = 0.3; // Shadow darkness (0 = invisible, 1 = black)
+
+  shadowCatcher = new THREE.Mesh(geometry, material);
+  shadowCatcher.rotation.x = -Math.PI / 2;
+  shadowCatcher.position.y = -0.01;
+  shadowCatcher.receiveShadow = true;
+  shadowCatcher.name = "shadowCatcher";
+
+
+  scene.add(shadowCatcher);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -160,20 +315,26 @@ export function initRenderer(onCardClick) {
 function animate() {
   animationFrameId = requestAnimationFrame(animate);
 
-  // Update all animation mixers
   const delta = clock.getDelta();
   updateAnimations(cardsArray, delta);
 
-  // Render the scene
-  if (renderer && scene && camera) {
-    renderer.render(scene, camera);
+  if (LIQUID_GLASS_CONFIG.ENABLED && envMap) {
+    cardsArray.forEach((card) => {
+      if (
+        card.backMesh &&
+        card.backMesh.material &&
+        card.backMesh.material.uniforms
+      ) {
+        updateLiquidGlassShader(card.backMesh.material, delta, camera);
+      }
+    });
   }
+
+  renderer.render(scene, camera);
 }
 
 function startRenderLoop() {
-  if (!animationFrameId) {
-    animate();
-  }
+  if (!animationFrameId) animate();
 }
 
 export function stopRenderLoop() {
@@ -184,54 +345,29 @@ export function stopRenderLoop() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// WINDOW RESIZE
+// RESIZE
 // ═══════════════════════════════════════════════════════════════════════════
 
 function onWindowResize() {
   if (!camera || !renderer || !container) return;
 
-  // Get container dimensions with multiple fallbacks
-  let w = container.clientWidth || container.offsetWidth || window.innerWidth;
-  let h =
-    container.clientHeight || container.offsetHeight || window.innerHeight;
+  let w = container.clientWidth || window.innerWidth;
+  let h = container.clientHeight || window.innerHeight;
 
-  // Enforce minimum dimensions to prevent collapse
-  if (w < RENDER_CONFIG.MIN_WIDTH || h < RENDER_CONFIG.MIN_HEIGHT) {
-    console.warn(`⚠️  Container too small (${w}x${h}), enforcing minimums`);
-    w = Math.max(w, RENDER_CONFIG.MIN_WIDTH);
-    h = Math.max(h, RENDER_CONFIG.MIN_HEIGHT);
+  w = Math.max(w, RENDER_CONFIG.MIN_WIDTH);
+  h = Math.max(h, RENDER_CONFIG.MIN_HEIGHT);
 
-    // Force container to maintain minimum size
-    container.style.minWidth = `${RENDER_CONFIG.MIN_WIDTH}px`;
-    container.style.minHeight = `${RENDER_CONFIG.MIN_HEIGHT}px`;
-  }
-
-  // Update camera aspect ratio
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
 
-  // Update renderer size
   const dpr = Math.min(window.devicePixelRatio || 1, RENDER_CONFIG.MAX_DPR);
   renderer.setPixelRatio(dpr);
   renderer.setSize(w, h, false);
-
-  // Ensure canvas fills container
-  if (renderer.domElement) {
-    renderer.domElement.style.width = "100%";
-    renderer.domElement.style.height = "100%";
-    renderer.domElement.style.display = "block";
-  }
-
-  console.log(`📐 Resize: ${w}x${h}, aspect: ${camera.aspect.toFixed(2)}`);
 }
 
 function handleResize() {
-  // Debounce resize events
   clearTimeout(resizeTimeout);
-  resizeTimeout = setTimeout(() => {
-    onWindowResize();
-    // Refit camera if cards exist (handled by cardManager)
-  }, ANIMATION_CONFIG.RESIZE_DEBOUNCE);
+  resizeTimeout = setTimeout(onWindowResize, ANIMATION_CONFIG.RESIZE_DEBOUNCE);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -248,23 +384,22 @@ function onPointerClick(event) {
   raycaster.setFromCamera({ x, y }, camera);
   const intersects = raycaster.intersectObjects(
     cardsArray.map((c) => c.mesh),
-    true,
+    true
   );
+
   if (intersects.length === 0) return;
 
-  // Find top-level card mesh
   let obj = intersects[0].object;
   while (obj && !obj.userData?.cardId) obj = obj.parent;
   if (!obj) return;
 
-  const cardId = obj.userData.cardId;
   if (onCardClickCallback) {
-    onCardClickCallback(cardId);
+    onCardClickCallback(obj.userData.cardId);
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PUBLIC API
+// PUBLIC API (ALL ORIGINAL)
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function setCardsArray(cards) {
@@ -283,6 +418,26 @@ export function getRenderer() {
   return renderer;
 }
 
+export function getEnvMap() {
+  return envMap;
+}
+
 export function triggerResize() {
   onWindowResize();
 }
+
+export function setHDRIBackgroundVisible(visible) {
+  if (!scene || !envMap) return;
+
+
+  if (visible) {
+    scene.background = envMap;
+  } else {
+    scene.background = new THREE.Color(RENDER_CONFIG.BACKGROUND_COLOR);
+  }
+
+  console.log(`🌅 HDRI background ${visible ? "shown" : "hidden"}`);
+
+  console.log(`🌅 HDRI background ${visible ? "shown" : "hidden"}`);
+}
+
