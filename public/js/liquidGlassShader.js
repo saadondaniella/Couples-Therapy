@@ -20,8 +20,8 @@ export function createLiquidGlassMaterial(envMap, isSkinnedMesh = false) {
       LIQUID_GLASS_CONFIG.COLOR_B,
     ),
     // Glass preset: non-metal, smooth, transmissive
-    metalness: 0.0,
-    roughness: 0.03,
+    metalness: 1.0,
+    roughness: 0.3,
     transmission: 1.0,
     thickness: LIQUID_GLASS_CONFIG.THICKNESS,
     ior: LIQUID_GLASS_CONFIG.IOR,
