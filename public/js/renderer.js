@@ -274,6 +274,37 @@ export async function initRenderer(onCardClick) {
   }
   window.addEventListener("click", onPointerClick);
 
+  // Also listen directly on the canvas for pointer/touch so mobile taps
+  // reliably reach the raycaster even when other UI or scrolling exists.
+  function canvasPointerHandler(e) {
+    let clientX, clientY;
+    if (e.touches && e.touches[0]) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else if (e.changedTouches && e.changedTouches[0]) {
+      clientX = e.changedTouches[0].clientX;
+      clientY = e.changedTouches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    // Forward a minimal event-like object to the existing handler
+    try {
+      onPointerClick({ clientX, clientY });
+    } catch (err) {
+      // swallow any errors to avoid breaking pointer flow
+      console.error("Error in canvasPointerHandler:", err);
+    }
+  }
+
+  // Attach listeners to the renderer canvas
+  // Use passive true for touchstart to avoid blocking scroll unless necessary
+  renderer.domElement.addEventListener("pointerdown", canvasPointerHandler);
+  renderer.domElement.addEventListener("touchstart", canvasPointerHandler, {
+    passive: true,
+  });
+
   onWindowResize();
   startRenderLoop();
 
