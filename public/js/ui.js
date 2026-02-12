@@ -11,10 +11,10 @@ const COLOR_LABEL = {
   "#ffd54a": "yellow",
   "#7fb3ff": "blue",
   "#8bd48b": "green",
-  red: "red",
-  yellow: "yellow",
-  blue: "blue",
-  green: "green",
+  red: "Röd",
+  yellow: "Gul",
+  blue: "Blå",
+  green: "Grön",
 };
 
 function normalizeLabel(col) {
@@ -40,13 +40,13 @@ export function updateGameInfo(gameState) {
 
   info.innerHTML = `
     ${isDebug ? `<strong>Game ID:</strong> ${gameState.gameId}<br>` : ""}
-    <strong>Players:</strong> ${gameState.players.length}<br>
+    <strong>Spelare:</strong> ${gameState.players.length}<br>
     <strong>Status:</strong> ${gameState.status}<br>
-    <strong>Active Player:</strong>
+    <strong>Aktiv spelare:</strong>
     <span style="color: ${activePlayer.color}">
       ${normalizeLabel(activePlayer.color)}
     </span><br>
-    <strong>Scores:</strong> ${playerScores}
+    <strong>Poäng:</strong> ${playerScores}
   `;
 }
 
@@ -189,8 +189,8 @@ export function showWinPopup(
   const isDraw = winners.length > 1;
 
   const title = isDraw
-    ? "It's a draw, you need more therapy!"
-    : ` Congratulation ${winners.map((w) => normalizeLabel(w.color)).join(" & ")}! You are the winner of Couples Therapy!`;
+    ? "Spelet blev oavgjort. Ni behöver mer terapi."
+    : ` Grattis ${winners.map((w) => normalizeLabel(w.color)).join(" & ")}! Du vann parterapin!`;
 
   const scoreText = gameState.players
     .map((p) => `${normalizeLabel(p.color)}: ${p.score}`)
