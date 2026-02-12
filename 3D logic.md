@@ -58,7 +58,6 @@ back_face remains constant for all cards.
 
 Texture Naming Convention
 
-Back of card: card_back.png
 Front faces: card_01.png, card_02.png, ..., card_08.png (for 8 pairs)
 Optional effects: card_match_effect.png
 
@@ -67,7 +66,6 @@ Folder structure suggestion:
 public/
 └─ assets/
    ├─ textures/
-   │  ├─ card_back.png
    │  ├─ card_01.png
    │  └─ card_08.png
    └─ models/
