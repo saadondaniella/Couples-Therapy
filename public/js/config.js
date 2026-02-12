@@ -65,7 +65,7 @@ export const HDRI_CONFIG = {
   SHOW_AS_BACKGROUND: true,
 
   // HDRI intensity/brightness multiplier
-  INTENSITY: 2.0,
+  INTENSITY: 1.5,
 
   // Background blur amount (0.0 = sharp, 1.0 = very blurred)
   // Only applies when SHOW_AS_BACKGROUND is true
@@ -92,7 +92,7 @@ export const LIQUID_GLASS_CONFIG = {
 	// Index of Refraction (IOR)
 	// 1.0 = air, 1.33 = water, 1.5 = glass, 2.4 = diamond
 	// Recommended range: 1.2-2.0
-	IOR: 1.0,
+	IOR: 2.4,
 	
 	// Thickness/depth of the glass
 	// Higher = thicker glass appearance
@@ -131,7 +131,7 @@ export const LIQUID_GLASS_CONFIG = {
 	// Distortion pattern scale
 	// Higher = smaller waves, Lower = larger waves
 	// Recommended range: 2.0-20.0
-	DISTORTION_SCALE: 20.0,
+	DISTORTION_SCALE: 2.0,
 	
 	// Animate the liquid movement (true/false)
 	ANIMATE: true,
